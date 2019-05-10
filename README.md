@@ -10,3 +10,13 @@ Final Project Sistem Operasi 2019
 > Asal file tersebut bisa tersebar dari berbagai folder dan subfolder. 
 > program mp3 mengarah ke FUSE untuk memutar musik.
 > Note: playlist bisa banyak, link mp3player
+
+### todolist:
+
+- [ ] bikin menu play
+- [ ] bikin list lagu
+- [ ] bikin queue buat nyimpen lagu selanjutnya(kalau bisa) hehe
+- [ ] pakai printnya berwarna bawaan linux
+- [ ] bikin fusenya (terakhir aja)
+- [ ] buka puasa dan sahur
+- [ ] revisi wkwkwk
