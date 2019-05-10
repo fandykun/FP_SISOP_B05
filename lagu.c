@@ -5,7 +5,6 @@ const char *path = "music";
 int main(int argc, char *argv[])
 {
     status_menu = MENU_UTAMA;
-
     inisialisasi_music_player();
 
     pthread_create(&tid_keyboard, NULL, &baca_perintah_keyboard, NULL);
@@ -19,28 +18,137 @@ int main(int argc, char *argv[])
     return 0;
 }
 
+void menu_utama()
+{
+    printf("1. Mainkan lagu\n");
+    printf("2. Daftar lagu saja\n");
+    printf("3. Exit\n");
+    printf("================================================\n");
+}
+
+void menu_lagu()
+{
+    printf("==================DAFTAR-LAGU===================\n");
+    list_lagu();
+    printf("================================================\n");
+    printf("Tekan apapun untuk kembali\n");
+    printf("================================================\n");
+}
+
+void menu_play()
+{
+    printf("==================DAFTAR-LAGU===================\n");
+    list_lagu();
+    printf("================================================\n");
+    printf("1. Play\n");
+    printf("2. Pause or resume\n");
+    printf("3. Stop\n");
+    printf("4. Previous song\n");
+    printf("5. Next song\n");
+    printf("6. Kembali ke menu utama\n");
+    printf("================================================\n");
+}
+
 void *baca_perintah_keyboard(void *args)
 {
     command = 0;
     while (command != 32)
     {
         command = getch();
-
+        if(status_menu == MENU_UTAMA)
+        {
+            switch (command)
+            {
+            case '1':
+                status_menu = MENU_PLAY;
+                break;
+            case '2':
+                status_menu = MENU_LIST_LAGU;
+                break;
+            case '3':
+                command = 32;
+                break;
+            default:
+                break;
+            }
+        }
+        else if(status_menu == MENU_LIST_LAGU)
+        {
+            switch (command)
+            {
+            case 'a':
+                // status_menu = MENU_UTAMA;
+            default:
+                status_menu = MENU_UTAMA;
+                break;
+            }
+        }
+        else if(status_menu == MENU_PLAY)
+        {
+            switch (command)
+            {
+            case '1':
+                if(status_lagu != PLAY)
+                {
+                    status_lagu = PLAY;
+                    pthread_create(&tid_musik, NULL, &mainkan_musik, (void *)daftar_lagu[3]);
+                }
+                break;
+            case '2':
+                if(status_lagu == PLAY)
+                    status_lagu = PAUSE;
+                else if(status_lagu == PAUSE)
+                    status_lagu = PLAY;
+                break;
+            case '3':
+                status_lagu = STOP;
+                break;
+            case '6':
+                status_lagu = STOP;
+                status_menu = MENU_UTAMA;
+                break;
+            default:
+                break;
+            }
+        }
     }
 }
 
 void *menu_music_player(void *args)
 {
-    
+    static int retsys;
+    int dummy;
+    while(command != 32)
+    {
+        dummy = system("echo \"==================MUSIC PLAYER==================\" | lolcat ");
+        dummy = system("echo \"================================================\" | lolcat ");
+        switch (status_menu)
+        {
+        case MENU_UTAMA:
+            menu_utama();
+            break;
+        case MENU_PLAY:
+            menu_play();
+            break;
+        case MENU_LIST_LAGU:
+            menu_lagu();
+            break;
+        default:
+            break;
+        }
+        sleep(1);
+        retsys = system("clear");
+    }
 }
 
 void *mainkan_musik(void *args)
 {
-    char nama_lagu[MAXLEN];
-    strcpy(nama_lagu, (void *) args);
+    char judul_lagu[MAXLEN];
+    char path_lagu[MAXLEN];
+    strcpy(judul_lagu, (void *) args);
+    sprintf(path_lagu, "%s/%s", path, judul_lagu);
 
-    baca_lagu(nama_lagu);
-    play_lagu();
+    play_lagu(path_lagu);
 }
 
 void inisialisasi_music_player()
@@ -54,7 +162,7 @@ void inisialisasi_music_player()
     buffer = (unsigned char*) malloc(buffer_size * sizeof(unsigned char));
 }
 
-void baca_lagu(char* nama_file)
+void play_lagu(char* nama_file)
 {
     //Membuka file dan mendapatkan format lagunya
     mpg123_open(music_handler, nama_file);
@@ -67,21 +175,14 @@ void baca_lagu(char* nama_file)
     format.byte_format = AO_FMT_NATIVE;
     format.matrix = 0;
     device = ao_open_live(driver, &format, NULL);
-}
 
-void play_lagu()
-{
     static int playing;
-    playing = mpg123_read(music_handler, buffer, buffer_size, &done);
-    while (playing  == MPG123_OK)
-    {
+    do {
+        playing = mpg123_read(music_handler, buffer, buffer_size, &done);
         switch (status_lagu)
         {
-        case PLAY:
-            ao_play(device, buffer, done);
-            break;
         case PAUSE:
-            while(status_lagu == PAUSE)
+            while(status_lagu != PLAY)
                 ;
             break;
         case STOP:
@@ -89,32 +190,34 @@ void play_lagu()
         default:
             break;
         }
-    }
+        ao_play(device, buffer, done);
+    } while (playing  == MPG123_OK);
 }
 
 void list_lagu()
 {
     static int index;
     static int len_lagu;
-    static char lagu[MAXLEN];
+    char lagu[MAXLEN];
     char *ext = ".mp3";
     
     index = 0;
+    char abjad = 'A';
     struct dirent *file;
     DIR *directory = opendir(path);
     if(directory == NULL)
     {
-        printf("SALAH DIRECTORY");
+        printf("SALAH DIRECTORY bgst");
         return;
     }
     while( (file = readdir(directory)) != NULL)
     {
         len_lagu = strlen(file->d_name);
-        snprintf(lagu, MAXLEN, "%s", file->d_name);
+        sprintf(lagu, "%s", file->d_name);
         if(strcmp(lagu + (len_lagu - 4), ext) == 0)
         {
-            sprintf(daftar_lagu[index++], "%s", lagu);   
-            printf("%d. %s\n", index, file->d_name);
+            printf("%c. %s\n", abjad + index, file->d_name);
+            sprintf(daftar_lagu[index++], "%s", lagu);
         }
     }
     closedir(directory);

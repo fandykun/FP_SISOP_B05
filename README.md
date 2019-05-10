@@ -13,8 +13,8 @@ Final Project Sistem Operasi 2019
 
 ### todolist:
 
-- [ ] bikin menu play
-- [ ] bikin list lagu
+- [x] bikin menu play
+- [x] bikin list lagu
 - [ ] bikin queue buat nyimpen lagu selanjutnya(kalau bisa) hehe
 - [ ] pakai printnya berwarna bawaan linux
 - [ ] bikin fusenya (terakhir aja)

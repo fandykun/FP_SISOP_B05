@@ -52,10 +52,13 @@ char daftar_lagu[MAXLIST][MAXLEN];
 
 //---------Deklarasi fungsi-------------
 void inisialisasi_music_player();
-void baca_lagu(char* nama_file);
-void play_lagu();
+void play_lagu(char* nama_file);
 void close_music_player();
 void list_lagu();
+
+void menu_lagu();
+void menu_play();
+void menu_utama();
 
 void *baca_perintah_keyboard(void *args);
 void *menu_music_player(void *args);
