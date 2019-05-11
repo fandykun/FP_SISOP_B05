@@ -17,13 +17,23 @@
 //-------Pre-define keperluan mp3------
 #define MENU_UTAMA 10
 #define MENU_PLAY 11
-#define MENU_LIST_LAGU 12
+#define MENU_PLAYLIST 12
+#define MENU_LIST_LAGU 13
 #define PLAY 1
 #define PAUSE 2
 #define STOP 3
 #define NEXT 4
 #define PREV 5
 #define PAGE 6
+
+#define KNRM  "\x1B[0m"
+#define KRED  "\x1B[31m"
+#define KGRN  "\x1B[32m"
+#define KYEL  "\x1B[33m"
+#define KBLU  "\x1B[34m"
+#define KMAG  "\x1B[35m"
+#define KCYN  "\x1B[36m"
+#define KWHT  "\x1B[37m"
 
 //--------Deklarasi variabel----------
 //===========Inisialisasi mpg123=========
@@ -47,6 +57,7 @@ pthread_t tid_keyboard;
 int status_menu;
 int status_sub_menu;
 int status_lagu;
+int now_playing = 0;
 int current_idx = -1;
 int max_idx = 0;
 int current_page = 0;
@@ -64,6 +75,7 @@ void menu_lagu();
 void menu_play();
 void menu_utama();
 
+void menu_playlist();
 
 void *baca_perintah_keyboard(void *args);
 void *menu_music_player(void *args);

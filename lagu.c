@@ -22,8 +22,9 @@ int main(int argc, char *argv[])
 void menu_utama()
 {
     printf("1. Mainkan lagu\n");
-    printf("2. Daftar lagu saja\n");
-    printf("3. Exit\n");
+    printf("2. Daftar lagu saja semuanya\n");
+    printf("3. Playlist\n");
+    printf("4. Exit\n");
     printf("================================================\n");
 }
 
@@ -39,14 +40,17 @@ void menu_lagu()
 
 void menu_play()
 {
+    char text[16];
+    if(now_playing) strcpy(text, "(now playing)");
+    else strcpy(text, " ");
     list_lagu();
     printf("==================DAFTAR-LAGU===================\n");
     print_lagu();
     printf("================================================\n");
         if(current_idx == -1) 
         printf("Silahkan memilih lagu dengan menekan sesuai abjad.\n");
-    else 
-        printf("Lagu saat ini: %s\n", daftar_lagu[current_idx]);
+    else
+        printf("Current song: %s %s\n", daftar_lagu[current_idx], text);
     printf("================================================\n");
     printf("1. Play\n");
     printf("2. Pause or resume\n");
@@ -56,8 +60,21 @@ void menu_play()
     printf("6. Previous Page\n");
     printf("7. Next Page\n");
     printf("8. Kembali ke menu utama\n");
-    printf("================================================\n");
+    printf("========================%c=======================\n", command);
 
+    if(status_lagu == PREV || status_lagu == NEXT) 
+        status_lagu = PLAY;
+    if( !now_playing && status_lagu == PLAY) 
+    {
+        pthread_create(&tid_musik, NULL, &mainkan_musik, (void *)daftar_lagu[current_idx]);
+        now_playing = 1;
+    }
+}
+
+void menu_playlist()
+{
+    printf("Playlist :\n");
+    printf("Tekan backspace untuk kembali.\n");
 }
 
 void print_lagu()
@@ -88,8 +105,22 @@ void *baca_perintah_keyboard(void *args)
                 status_menu = MENU_LIST_LAGU;
                 break;
             case '3':
+                status_menu = MENU_PLAYLIST;
+            case '4':
                 command = 32;
                 break;
+            default:
+                break;
+            }
+        }
+        else if(status_menu == MENU_PLAYLIST)
+        {
+            switch (command)
+            {
+            case 8:
+                status_menu = MENU_UTAMA;
+                break;
+            
             default:
                 break;
             }
@@ -112,7 +143,6 @@ void *baca_perintah_keyboard(void *args)
                     && current_idx >= 0)
                 {
                     status_lagu = PLAY;
-                    pthread_create(&tid_musik, NULL, &mainkan_musik, (void *)daftar_lagu[current_idx]);
                 }
                 break;
             case '2':
@@ -123,11 +153,13 @@ void *baca_perintah_keyboard(void *args)
                 break;
             case '3':
                 status_lagu = STOP;
+                now_playing = 0;
                 break;
             case '4':
                 if(current_idx > 0) {
                     current_idx--;
                     status_lagu = PREV;
+                    now_playing = 0;
                 }
                 break;
             case '5':
@@ -135,6 +167,7 @@ void *baca_perintah_keyboard(void *args)
                 {
                     current_idx++;
                     status_lagu = NEXT;
+                    now_playing = 0;
                 } 
                 break;
             case '6':
@@ -234,15 +267,26 @@ void play_lagu(char* nama_file)
             break;
         case STOP:
             playing = !MPG123_OK;
+            break;
         case PREV:
             playing = !MPG123_OK;
+            break;
         case NEXT:
             playing = !MPG123_OK;
+            break;
         default:
             break;
         }
         
     } while (playing  == MPG123_OK);
+    if(status_lagu == PLAY) {
+        if(current_idx < sizeof(daftar_lagu)/MAXLEN)
+        {
+            current_idx++;
+            status_lagu = NEXT;
+            now_playing = 0;
+        } 
+    }
 }
 
 void list_lagu()
