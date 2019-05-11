@@ -7,7 +7,7 @@ int main(int argc, char *argv[])
     status_menu = MENU_UTAMA;
     int handler = system("clear");
     inisialisasi_music_player();
-
+    pthread_mutex_init(&lock, NULL);
     pthread_create(&tid_keyboard, NULL, &baca_perintah_keyboard, NULL);
     pthread_create(&tid_menu, NULL, &menu_music_player, NULL);
 
@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
     pthread_join(tid_menu, NULL);
 
     close_music_player();
-
+    pthread_mutex_destroy(&lock);
     return 0;
 }
 
@@ -66,14 +66,20 @@ void menu_play()
         status_lagu = PLAY;
     if( !now_playing && status_lagu == PLAY) 
     {
+        pthread_mutex_lock(&lock);
+        pthread_cancel(tid_musik);
         pthread_create(&tid_musik, NULL, &mainkan_musik, (void *)daftar_lagu[current_idx]);
         now_playing = 1;
+        pthread_mutex_unlock(&lock);
     }
 }
 
 void menu_playlist()
 {
     printf("Playlist :\n");
+    
+    printf("================================================\n");
+    printf("1. Tambah playlist\n");
     printf("Tekan backspace untuk kembali.\n");
 }
 
@@ -83,9 +89,14 @@ void print_lagu()
     abjad = 'A';
     for(int i = 0;i < PAGE; i++)
     {
-        if( i + (current_page*PAGE) <  max_idx)
+        if( i + (current_page*PAGE) <=  max_idx)
             printf("%c. %s\n", abjad++, daftar_lagu[ (current_page * PAGE) + i]);
     }
+}
+
+void print_playlist()
+{
+    
 }
 
 void *baca_perintah_keyboard(void *args)
@@ -106,6 +117,7 @@ void *baca_perintah_keyboard(void *args)
                 break;
             case '3':
                 status_menu = MENU_PLAYLIST;
+                break;
             case '4':
                 command = 32;
                 break;
@@ -117,11 +129,8 @@ void *baca_perintah_keyboard(void *args)
         {
             switch (command)
             {
-            case 8:
-                status_menu = MENU_UTAMA;
-                break;
-            
             default:
+                status_menu = MENU_UTAMA;
                 break;
             }
         }
@@ -129,8 +138,10 @@ void *baca_perintah_keyboard(void *args)
         {
             switch (command)
             {
-            default:
+            case 8:
                 status_menu = MENU_UTAMA;
+                break;
+            default:
                 break;
             }
         }
@@ -165,7 +176,7 @@ void *baca_perintah_keyboard(void *args)
             case '5':
                 if(current_idx < sizeof(daftar_lagu)/MAXLEN)
                 {
-                    current_idx++;
+                    current_idx = (current_idx + 1) % (max_idx + 1);
                     status_lagu = NEXT;
                     now_playing = 0;
                 } 
@@ -183,9 +194,17 @@ void *baca_perintah_keyboard(void *args)
                 status_menu = MENU_UTAMA;
                 break;
             default:
-                if('A' <= command && command <= ('A' + PAGE) && status_lagu != PLAY)
+            {
+                int abjad_maks;
+                if( ((current_page+1)*PAGE) >= max_idx) 
+                    abjad_maks = max_idx % PAGE;
+                else abjad_maks = PAGE;
+
+                if('A' <= command && command <= ('A' + abjad_maks ) && status_lagu != PLAY)
                     current_idx = (current_page*PAGE) + (command - 'A');
                 break;
+            }
+                
             }
         }
     }
@@ -193,7 +212,6 @@ void *baca_perintah_keyboard(void *args)
 
 void *menu_music_player(void *args)
 {
-    static int retsys;
     static int handler;
     while(command != 32)
     {
@@ -202,6 +220,7 @@ void *menu_music_player(void *args)
         switch (status_menu)
         {
         case MENU_UTAMA:
+            current_idx = -1;
             menu_utama();
             break;
         case MENU_PLAY:
@@ -210,11 +229,13 @@ void *menu_music_player(void *args)
         case MENU_LIST_LAGU:
             menu_lagu();
             break;
+        case MENU_PLAYLIST:
+            menu_playlist();
         default:
             break;
         }
         sleep(1);
-        retsys = system("clear");
+        handler = system("clear");
     }
 }
 
@@ -225,24 +246,8 @@ void *mainkan_musik(void *args)
     strcpy(judul_lagu, (void *) args);
     sprintf(path_lagu, "%s/%s", path, judul_lagu);
 
-    play_lagu(path_lagu);
-}
-
-void inisialisasi_music_player()
-{
-    static int err;
-    ao_initialize();
-    driver = ao_default_driver_id();
-    mpg123_init();
-    music_handler = mpg123_new(NULL, &err);
-    buffer_size = mpg123_outblock(music_handler);
-    buffer = (unsigned char*) malloc(buffer_size * sizeof(unsigned char));
-}
-
-void play_lagu(char* nama_file)
-{
     //Membuka file dan mendapatkan format lagunya
-    mpg123_open(music_handler, nama_file);
+    mpg123_open(music_handler, path_lagu);
     mpg123_getformat(music_handler, &rate, &channels, &encoding);
 
     //mengatur format musik agar dieksekusi oleh libao
@@ -253,7 +258,6 @@ void play_lagu(char* nama_file)
     format.matrix = 0;
     device = ao_open_live(driver, &format, NULL);
 
-    static int pause_handler;
     static int playing;
     do {
         playing = mpg123_read(music_handler, buffer, buffer_size, &done);
@@ -282,7 +286,7 @@ void play_lagu(char* nama_file)
     if(status_lagu == PLAY) {
         if(current_idx < sizeof(daftar_lagu)/MAXLEN)
         {
-            current_idx++;
+            current_idx = (current_idx + 1) % max_idx;
             status_lagu = NEXT;
             now_playing = 0;
         } 
@@ -313,8 +317,19 @@ void list_lagu()
             sprintf(daftar_lagu[index++], "%s", lagu);
         }
     }
-    max_idx = index;
+    max_idx = index - 1;
     closedir(directory);
+}
+
+void inisialisasi_music_player()
+{
+    static int err;
+    ao_initialize();
+    driver = ao_default_driver_id();
+    mpg123_init();
+    music_handler = mpg123_new(NULL, &err);
+    buffer_size = mpg123_outblock(music_handler);
+    buffer = (unsigned char*) malloc(buffer_size * sizeof(unsigned char));
 }
 
 void close_music_player()
