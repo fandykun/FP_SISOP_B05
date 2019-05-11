@@ -15,6 +15,7 @@ Final Project Sistem Operasi 2019
 
 - [x] bikin menu play
 - [x] bikin list lagu
+- [x] menambahkan pagination buat nge-handler kalau lagunya kebanyakan
 - [ ] bikin queue buat nyimpen lagu selanjutnya(kalau bisa) hehe
 - [ ] pakai printnya berwarna bawaan linux
 - [ ] bikin fusenya (terakhir aja)

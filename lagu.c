@@ -1,10 +1,11 @@
 #include "lagu.h"
 
-const char *path = "music";
+const char *path = "music"; //Path mengarah ke hasil fuse
 
 int main(int argc, char *argv[])
 {
     status_menu = MENU_UTAMA;
+    int handler = system("clear");
     inisialisasi_music_player();
 
     pthread_create(&tid_keyboard, NULL, &baca_perintah_keyboard, NULL);
@@ -28,8 +29,9 @@ void menu_utama()
 
 void menu_lagu()
 {
-    printf("==================DAFTAR-LAGU===================\n");
     list_lagu();
+    printf("==================DAFTAR-LAGU===================\n");
+    print_lagu();
     printf("================================================\n");
     printf("Tekan apapun untuk kembali\n");
     printf("================================================\n");
@@ -37,16 +39,36 @@ void menu_lagu()
 
 void menu_play()
 {
-    printf("==================DAFTAR-LAGU===================\n");
     list_lagu();
+    printf("==================DAFTAR-LAGU===================\n");
+    print_lagu();
+    printf("================================================\n");
+        if(current_idx == -1) 
+        printf("Silahkan memilih lagu dengan menekan sesuai abjad.\n");
+    else 
+        printf("Lagu saat ini: %s\n", daftar_lagu[current_idx]);
     printf("================================================\n");
     printf("1. Play\n");
     printf("2. Pause or resume\n");
     printf("3. Stop\n");
     printf("4. Previous song\n");
     printf("5. Next song\n");
-    printf("6. Kembali ke menu utama\n");
+    printf("6. Previous Page\n");
+    printf("7. Next Page\n");
+    printf("8. Kembali ke menu utama\n");
     printf("================================================\n");
+
+}
+
+void print_lagu()
+{
+    static int abjad;
+    abjad = 'A';
+    for(int i = 0;i < PAGE; i++)
+    {
+        if( i + (current_page*PAGE) <  max_idx)
+            printf("%c. %s\n", abjad++, daftar_lagu[ (current_page * PAGE) + i]);
+    }
 }
 
 void *baca_perintah_keyboard(void *args)
@@ -76,8 +98,6 @@ void *baca_perintah_keyboard(void *args)
         {
             switch (command)
             {
-            case 'a':
-                // status_menu = MENU_UTAMA;
             default:
                 status_menu = MENU_UTAMA;
                 break;
@@ -88,10 +108,11 @@ void *baca_perintah_keyboard(void *args)
             switch (command)
             {
             case '1':
-                if(status_lagu != PLAY)
+                if( (status_lagu != PLAY || status_lagu == PREV || status_lagu == NEXT) 
+                    && current_idx >= 0)
                 {
                     status_lagu = PLAY;
-                    pthread_create(&tid_musik, NULL, &mainkan_musik, (void *)daftar_lagu[3]);
+                    pthread_create(&tid_musik, NULL, &mainkan_musik, (void *)daftar_lagu[current_idx]);
                 }
                 break;
             case '2':
@@ -103,11 +124,34 @@ void *baca_perintah_keyboard(void *args)
             case '3':
                 status_lagu = STOP;
                 break;
+            case '4':
+                if(current_idx > 0) {
+                    current_idx--;
+                    status_lagu = PREV;
+                }
+                break;
+            case '5':
+                if(current_idx < sizeof(daftar_lagu)/MAXLEN)
+                {
+                    current_idx++;
+                    status_lagu = NEXT;
+                } 
+                break;
             case '6':
+                if( (current_page*PAGE) >= PAGE )
+                    current_page--;
+                break;
+            case '7':
+                if( (current_page*PAGE + (max_idx%PAGE)) < max_idx )
+                    current_page++;
+                break;
+            case '8':
                 status_lagu = STOP;
                 status_menu = MENU_UTAMA;
                 break;
             default:
+                if('A' <= command && command <= ('A' + PAGE) && status_lagu != PLAY)
+                    current_idx = (current_page*PAGE) + (command - 'A');
                 break;
             }
         }
@@ -117,11 +161,11 @@ void *baca_perintah_keyboard(void *args)
 void *menu_music_player(void *args)
 {
     static int retsys;
-    int dummy;
+    static int handler;
     while(command != 32)
     {
-        dummy = system("echo \"==================MUSIC PLAYER==================\" | lolcat ");
-        dummy = system("echo \"================================================\" | lolcat ");
+        printf("==================MUSIC PLAYER==================\n");
+        printf("================================================\n");
         switch (status_menu)
         {
         case MENU_UTAMA:
@@ -176,21 +220,28 @@ void play_lagu(char* nama_file)
     format.matrix = 0;
     device = ao_open_live(driver, &format, NULL);
 
+    static int pause_handler;
     static int playing;
     do {
         playing = mpg123_read(music_handler, buffer, buffer_size, &done);
         switch (status_lagu)
         {
+        case PLAY:
+            ao_play(device, buffer, done);
+            break;
         case PAUSE:
-            while(status_lagu != PLAY)
-                ;
+            while(status_lagu != PLAY) fflush(stdout);
             break;
         case STOP:
-            playing = !MPG123_OK;            
+            playing = !MPG123_OK;
+        case PREV:
+            playing = !MPG123_OK;
+        case NEXT:
+            playing = !MPG123_OK;
         default:
             break;
         }
-        ao_play(device, buffer, done);
+        
     } while (playing  == MPG123_OK);
 }
 
@@ -202,7 +253,6 @@ void list_lagu()
     char *ext = ".mp3";
     
     index = 0;
-    char abjad = 'A';
     struct dirent *file;
     DIR *directory = opendir(path);
     if(directory == NULL)
@@ -216,10 +266,10 @@ void list_lagu()
         sprintf(lagu, "%s", file->d_name);
         if(strcmp(lagu + (len_lagu - 4), ext) == 0)
         {
-            printf("%c. %s\n", abjad + index, file->d_name);
             sprintf(daftar_lagu[index++], "%s", lagu);
         }
     }
+    max_idx = index;
     closedir(directory);
 }
 

@@ -23,6 +23,7 @@
 #define STOP 3
 #define NEXT 4
 #define PREV 5
+#define PAGE 6
 
 //--------Deklarasi variabel----------
 //===========Inisialisasi mpg123=========
@@ -46,7 +47,9 @@ pthread_t tid_keyboard;
 int status_menu;
 int status_sub_menu;
 int status_lagu;
-int index_lagu;
+int current_idx = -1;
+int max_idx = 0;
+int current_page = 0;
 char command;
 char daftar_lagu[MAXLIST][MAXLEN];
 
@@ -55,10 +58,12 @@ void inisialisasi_music_player();
 void play_lagu(char* nama_file);
 void close_music_player();
 void list_lagu();
+void print_lagu();
 
 void menu_lagu();
 void menu_play();
 void menu_utama();
+
 
 void *baca_perintah_keyboard(void *args);
 void *menu_music_player(void *args);
