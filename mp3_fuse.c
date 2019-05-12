@@ -15,7 +15,7 @@
 #define SUCCESS_STAT 0
 #define MAXL 1024
 static const char *dirpath = "/home/fandykun/hasilmp3";
-const char *path_soal = "/home/fandykun/Downloads";
+const char *path_soal = "/home/fandykun";
 
 int is_directory(const char *path);
 int delete_files_and_directory(const char *path);
@@ -23,6 +23,7 @@ void get_mp3_from_directory(const char *path);
 int is_mp3(const char *filename, char *ext);
 void *init_fusethread(void *args);
 
+char mountable[64];
 char list_lagu[256][MAXL];
 int idx_lagu = 0;
 int same = 0;
@@ -40,6 +41,9 @@ void *prefix_init(struct fuse_conn_info *conn)
     return NULL;
 }
 
+//=====================
+//-Inisialisasi thread-
+//=====================
 void *init_fusethread(void *args)
 {
     get_mp3_from_directory(path_soal);
@@ -151,6 +155,7 @@ static struct fuse_operations prefix_oper = {
 
 int main(int argc, char *argv[])
 {
+    strcpy(mountable, argv[1]);
     umask(0);
     return fuse_main(argc, argv, &prefix_oper, NULL);
 }
@@ -236,7 +241,8 @@ void get_mp3_from_directory(const char *path)
         sprintf(filepath, "%s/%s", path, content->d_name);
         if ((strcmp(content->d_name, "..") == 0) ||
             (strcmp(content->d_name, "." ) == 0) ||
-            (strcmp(path, dirpath) == 0) )
+            (strcmp(content->d_name, mountable) == 0) ||
+            (content->d_name[0] == '.') )
         {
             continue;
         }
