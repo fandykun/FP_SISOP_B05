@@ -1,23 +1,37 @@
-# FP_SISOP_B05
-Final Project Sistem Operasi 2019
+# Final Project Sistem Operasi 2019
 
-> Buatlah sebuah music player dengan bahasa C yang memiliki fitur 
->     play nama_lagu, pause, next, prev, list lagu. 
-> Selain music player juga terdapat FUSE untuk mengumpulkan semua jenis file yang 
->     berekstensi .mp3 kedalam FUSE yang tersebar pada direktori /home/user. 
-> Ketika FUSE dijalankan, direktori hasil FUSE hanya berisi file .mp3 
->     tanpa ada direktori lain di dalamnya. 
-> Asal file tersebut bisa tersebar dari berbagai folder dan subfolder. 
-> program mp3 mengarah ke FUSE untuk memutar musik.
-> Note: playlist bisa banyak, link mp3player
+## FUSE
+#### Persyaratan
 
-### todolist:
+- Build-Essential / gcc
+- Libfuse
+```shell
+$ sudo apt-get update
+$ sudo apt-get install build-essential
+$ sudo apt-get install libfuse* -y
+```
+### [Source code](https://github.com/fandykun/FP_SISOP_B05/blob/master/mp3_fuse.c)
+#### NB: Program sudah saya buat agar mudah dibaca, penjelasan dibawah berupa penjelasan singkat.
 
-- [x] bikin menu play
-- [x] bikin list lagu
-- [x] menambahkan pagination buat nge-handler kalau lagunya kebanyakan
-- [ ] bikin queue buat nyimpen lagu selanjutnya(kalau bisa) hehe
-- [ ] pakai printnya berwarna bawaan linux
-- [ ] bikin fusenya (terakhir aja)
-- [ ] buka puasa dan sahur
-- [ ] revisi wkwkwk
+#### Penjelasan Fuse
+- `.init`
+  - Digunakan untuk menginisialisasi, dalam hal ini dibuat sebuah **thread** untuk melakukan query untuk mendapatkan semua file yang berekstensi `.mp3` dan di **copy** satu direktori *temporary* untuk dikumpulkan 
+  - Dilakukan sebuah fungsi rekursi untuk file didalam folder dan subfolder dengan *basecase* ketika nama *path* tersebut sudah bukan termasuk direktori lagi berdasarkan kondisi *statnya*.
+- `.getattr`, `.readdir`, `.read`
+  - Dalam hal ini, fungsi yang dilakukan didalamnya sama halnya dengan program contoh fuse seperti sebelumnya, bedanya ia melakukan `mount` dari hasil direktori yang dilakukan di `.init` tadi.
+- `.destroy`
+  - Karena `mount` tersebut didapatkan dari direktori yang mengcopy semua file yang berekstensi `.mp3` di init tadi, maka direktori *temporary* tersebut perlu dihapus.
+
+## MP3 Player using Thread
+#### Persyaratan
+- Build-Essential / gcc
+- libmpg123
+- Libao
+```shell
+$ sudo apt-get update
+$ sudo apt-get install build-essential
+$ sudo apt-get install libmpg123-dev
+$ sudo apt-get install libao-dev
+```
+
+#### Penjelasan MP3 Player
