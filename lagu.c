@@ -7,6 +7,7 @@ int main(int argc, char *argv[])
     status_menu = MENU_UTAMA;
     int handler = system("clear");
     inisialisasi_music_player();
+    memset(max_isi, 0, sizeof(max_isi));
 
     pthread_mutex_init(&lock, NULL);
     pthread_create(&tid_keyboard, NULL, &baca_perintah_keyboard, NULL);
@@ -37,7 +38,7 @@ void menu_lagu()
     printf("MILIK = \t%s", nama_playlist[playlist_idx]);
     printf("================================================\n");
     printf("1. mainkan lagu pilihanmu!\n");
-    printf("2. Tambah/hapus lagu\n");
+    printf("2. Tambah lagu\n");
     printf("3. Kembali ke menu utama\n");
 }
 
@@ -49,26 +50,19 @@ void menu_tambahkan_lagu()
     for(int i = 0;i < max_isi[playlist_idx]; i++)
         printf("%c. %s\n", abjad++, daftar_lagu[isi_playlist[playlist_idx][i] ]);
     printf("================================================\n");
-    printf("Playlist milik %s ingin menambahkan lagu apa ?\n", nama_playlist[playlist_idx]);
+    printf("Hai, %s\t ingin menambahkan lagu apa ?\n", nama_playlist[playlist_idx]);
     print_lagu();
     if(current_idx == -1)
         printf("Silahkan memilih lagu dengan menekan sesuai abjad.\n");
     else
-        printf("Lagu yang dipilih: %c\n", command);
+        printf("Lagu yang dipilih: %s\n", daftar_lagu[current_idx]);
     printf("1. Tambah lagu\n");
-    printf("2. Hapus lagu\n");
     printf("3. Prev Page\n");
     printf("4. Next Page\n");
     printf("5. Kembali ke menu playlist utama\n");
     if(status_playlist_lagu == ADD) {
         isi_playlist[playlist_idx][ max_isi[playlist_idx]++ ] = current_idx;
         current_idx = -1;
-        status_playlist_lagu = DONE;
-    }else if(status_playlist_lagu == REMOVE) {
-        for(int i = current_idx;i < max_isi[i]; i++) {
-            isi_playlist[playlist_idx][i] = isi_playlist[playlist_idx][i + 1];
-            current_idx = -1;
-        }
         status_playlist_lagu = DONE;
     }
 }
@@ -88,10 +82,10 @@ void menu_play_playlist()
         printf("================================================\n");
     }else printf("Silahkan kembali ke menu playlist utama terlebih dahulu untuk menambahkan lagu.\n");
     printf("================================================\n");
-    if(current_idx == -1)
+    if(idx_cok == -1)
         printf("Silahkan memilih lagu dengan menekan sesuai abjad.\n");
     else
-        printf("Current song: %s %s\n", daftar_lagu[isi_playlist[playlist_idx][current_idx]], text);
+        printf("Current song: %s %s\n", daftar_lagu[isi_playlist[playlist_idx][idx_cok]], text);
     printf("================================================\n");
     printf("1. Play\n");
     printf("2. Pause or resume\n");
@@ -106,7 +100,7 @@ void menu_play_playlist()
     if( !now_playing && status_lagu == PLAY) 
     {
         pthread_cancel(tid_musik);
-        pthread_create(&tid_musik, NULL, &mainkan_musik, (void *)daftar_lagu[isi_playlist[playlist_idx][current_idx]]);
+        pthread_create(&tid_musik, NULL, &mainkan_musik, (void *)daftar_lagu[isi_playlist[playlist_idx][idx_cok]]);
         now_playing = 1;
     }
 }
@@ -300,7 +294,7 @@ void *baca_perintah_keyboard(void *args)
             {
             case '1':
                 if( (status_lagu != PLAY || status_lagu == PREV || status_lagu == NEXT) 
-                    && current_idx >= 0)
+                    && idx_cok >= 0)
                 {
                     status_lagu = PLAY;
                 }
@@ -316,28 +310,31 @@ void *baca_perintah_keyboard(void *args)
                 now_playing = 0;
                 break;
             case '4':
-                if(current_idx > 0) {
-                    current_idx--;
+                if(idx_cok > 0) {
+                    idx_cok--;
                     status_lagu = PREV;
                     now_playing = 0;
                 }
                 break;
             case '5':
-                if(current_idx < sizeof(daftar_lagu)/MAXLEN)
+                if(idx_cok < max_isi[playlist_idx])
                 {
-                    current_idx = (current_idx + 1) % (max_idx + 1);
+                    idx_cok = (idx_cok + 1) % max_isi[playlist_idx];
                     status_lagu = NEXT;
                     now_playing = 0;
                 }
                 break;
             case '6':
                 status_lagu = STOP;
-                status_menu = MENU_UTAMA;
+                idx_cok = -1;
+                now_playing = 0;
+                status_menu = MENU_PLAYLIST;
                 break;
             default:
-                if('A' <= command && command <= ('A' +  max_isi[playlist_idx])
-                    && status_lagu != PLAY){
-                        current_idx = command - 'A';
+                if('A' <= command && command <= ('A' +  max_isi[playlist_idx] )
+                    && status_lagu != PLAY)
+                    {
+                        idx_cok = command - 'A';
                     }
                 break;
 
