@@ -36,11 +36,79 @@ void menu_lagu()
     printf("====================PLAYLIST====================\n");
     printf("MILIK = \t%s", nama_playlist[playlist_idx]);
     printf("================================================\n");
-    
+    printf("1. mainkan lagu pilihanmu!\n");
+    printf("2. Tambah/hapus lagu\n");
+    printf("3. Kembali ke menu utama\n");
+}
+
+void menu_tambahkan_lagu()
+{
+    list_lagu();
+    printf("Daftar lagumu saat ini: \n");
+    char abjad = 'A';
+    for(int i = 0;i < max_isi[playlist_idx]; i++)
+        printf("%c. %s\n", abjad++, daftar_lagu[isi_playlist[playlist_idx][i] ]);
     printf("================================================\n");
-    printf("1. Tambahkan lagu.\n");
+    printf("Playlist milik %s ingin menambahkan lagu apa ?\n", nama_playlist[playlist_idx]);
+    print_lagu();
+    if(current_idx == -1)
+        printf("Silahkan memilih lagu dengan menekan sesuai abjad.\n");
+    else
+        printf("Lagu yang dipilih: %c\n", command);
+    printf("1. Tambah lagu\n");
     printf("2. Hapus lagu\n");
-    printf("4. Kembali ke menu utama\n");
+    printf("3. Prev Page\n");
+    printf("4. Next Page\n");
+    printf("5. Kembali ke menu playlist utama\n");
+    if(status_playlist_lagu == ADD) {
+        isi_playlist[playlist_idx][ max_isi[playlist_idx]++ ] = current_idx;
+        current_idx = -1;
+        status_playlist_lagu = DONE;
+    }else if(status_playlist_lagu == REMOVE) {
+        for(int i = current_idx;i < max_isi[i]; i++) {
+            isi_playlist[playlist_idx][i] = isi_playlist[playlist_idx][i + 1];
+            current_idx = -1;
+        }
+        status_playlist_lagu = DONE;
+    }
+}
+
+void menu_play_playlist()
+{
+    char text[16];
+    if(now_playing) strcpy(text, "(now playing)");
+    else strcpy(text, " ");
+    printf("====================PLAYLIST====================\n");
+    printf("MILIK = \t%s", nama_playlist[playlist_idx]);
+    if(max_isi[playlist_idx] > 0) {
+        printf("==================DAFTAR-LAGU===================\n");
+        char abjad ='A';
+        for(int i = 0;i < max_isi[playlist_idx]; i++)
+            printf("%c. %s\n", abjad++, daftar_lagu[isi_playlist[playlist_idx][i] ]);
+        printf("================================================\n");
+    }else printf("Silahkan kembali ke menu playlist utama terlebih dahulu untuk menambahkan lagu.\n");
+    printf("================================================\n");
+    if(current_idx == -1)
+        printf("Silahkan memilih lagu dengan menekan sesuai abjad.\n");
+    else
+        printf("Current song: %s %s\n", daftar_lagu[isi_playlist[playlist_idx][current_idx]], text);
+    printf("================================================\n");
+    printf("1. Play\n");
+    printf("2. Pause or resume\n");
+    printf("3. Stop\n");
+    printf("4. Previous song\n");
+    printf("5. Next song\n");
+    printf("6. Kembali ke menu playlist utama\n");
+    printf("========================%c=======================\n", command);
+
+    if(status_lagu == PREV || status_lagu == NEXT) 
+        status_lagu = PLAY;
+    if( !now_playing && status_lagu == PLAY) 
+    {
+        pthread_cancel(tid_musik);
+        pthread_create(&tid_musik, NULL, &mainkan_musik, (void *)daftar_lagu[isi_playlist[playlist_idx][current_idx]]);
+        now_playing = 1;
+    }
 }
 
 void menu_play()
@@ -213,11 +281,103 @@ void *baca_perintah_keyboard(void *args)
         {
             switch (command)
             {
-            case '4':
+            case '1': //Main lagu dari playlist
+                status_menu = MENU_PLAY_PLAYLIST;
+                break;
+            case '2': //Tambahkan lagu dari playlist
+                status_menu = MENU_TAMBAHKAN_LAGU;
+                break;
+            case '3':
                 status_menu = MENU_UTAMA;
                 break;
             default:
                 break;
+            }
+        }
+        else if(status_menu == MENU_PLAY_PLAYLIST)
+        {
+            switch (command)
+            {
+            case '1':
+                if( (status_lagu != PLAY || status_lagu == PREV || status_lagu == NEXT) 
+                    && current_idx >= 0)
+                {
+                    status_lagu = PLAY;
+                }
+                break;
+            case '2':
+                if(status_lagu == PLAY)
+                    status_lagu = PAUSE;
+                else if(status_lagu == PAUSE)
+                    status_lagu = PLAY;
+                break;
+            case '3':
+                status_lagu = STOP;
+                now_playing = 0;
+                break;
+            case '4':
+                if(current_idx > 0) {
+                    current_idx--;
+                    status_lagu = PREV;
+                    now_playing = 0;
+                }
+                break;
+            case '5':
+                if(current_idx < sizeof(daftar_lagu)/MAXLEN)
+                {
+                    current_idx = (current_idx + 1) % (max_idx + 1);
+                    status_lagu = NEXT;
+                    now_playing = 0;
+                }
+                break;
+            case '6':
+                status_lagu = STOP;
+                status_menu = MENU_UTAMA;
+                break;
+            default:
+                if('A' <= command && command <= ('A' +  max_isi[playlist_idx])
+                    && status_lagu != PLAY){
+                        current_idx = command - 'A';
+                    }
+                break;
+
+            }
+        }
+        else if(status_menu == MENU_TAMBAHKAN_LAGU)
+        {
+            switch (command)
+            {
+            case '1':
+                if(current_idx >= 0)
+                    status_playlist_lagu = ADD;
+                break;
+            case '2':
+                if(current_idx >= 0)
+                    status_playlist_lagu = REMOVE;
+                break;
+            case '3':
+                if( (current_page*PAGE) >= PAGE )
+                    current_page--;
+                break;
+            case '4':
+                if( (current_page*PAGE + (max_idx%PAGE)) < max_idx )
+                    current_page++;
+                break;           
+            case '5':
+                status_menu = MENU_LIST_LAGU;
+                break; 
+            default:
+            {
+                int abjad_maks;
+                if( ((current_page+1)*PAGE) >= max_idx) 
+                    abjad_maks = max_idx % PAGE;
+                else abjad_maks = PAGE;
+
+                if('A' <= command && command <= ('A' + abjad_maks ) 
+                    && status_lagu != PLAY)
+                    current_idx = (current_page*PAGE) + (command - 'A');
+                break;
+            }
             }
         }
         else if(status_menu == MENU_PLAY)
@@ -298,6 +458,7 @@ void *menu_music_player(void *args)
         case MENU_UTAMA:
             current_idx = -1;
             playlist_idx = -1;
+            current_page = 0;
             menu_utama();
             break;
         case MENU_PLAY:
@@ -308,6 +469,15 @@ void *menu_music_player(void *args)
             break;
         case MENU_PLAYLIST:
             menu_playlist();
+            break;
+        case MENU_PLAY_PLAYLIST:
+            current_idx = -1;
+            current_page = 0;
+            menu_play_playlist();
+            break;
+        case MENU_TAMBAHKAN_LAGU:
+            menu_tambahkan_lagu();
+            break;
         default:
             break;
         }

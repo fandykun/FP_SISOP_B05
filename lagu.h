@@ -19,6 +19,8 @@
 #define MENU_PLAY 11
 #define MENU_PLAYLIST 12
 #define MENU_LIST_LAGU 13
+#define MENU_PLAY_PLAYLIST 14
+#define MENU_TAMBAHKAN_LAGU 15
 #define PLAY 1
 #define PAUSE 2
 #define STOP 3
@@ -63,6 +65,7 @@ int mutex = 0;
 int status_menu;
 int status_lagu;
 int status_playlist;
+int status_playlist_lagu = 0;
 
 int now_playing = 0;
 int current_idx = -1;
@@ -74,9 +77,12 @@ char daftar_lagu[MAXLIST][MAXLEN];
 
 char nama_playlist[MAXLIST][MAXLEN];
 int isi_playlist[MAXLIST][MAXLIST];
+int max_isi[MAXLIST];
+int idx_cok = -1;
 int max_playlist_idx = 0;
 int playlist_idx = -1;
 int lagu_playlist_idx = 0;
+
 //---------Deklarasi fungsi-------------
 void inisialisasi_music_player();
 void close_music_player();
@@ -85,7 +91,10 @@ void print_lagu();
 
 void menu_lagu();
 void menu_play();
+void menu_play_playlist();
 void menu_utama();
+
+void menu_tambahkan_lagu();
 
 void menu_playlist();
 void print_playlist();
