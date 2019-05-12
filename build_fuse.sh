@@ -1,1 +1,1 @@
-gcc -Wall `pkg-config fuse --cflags` $1.c -o $1 `pkg-config fuse --libs`
+gcc -Wall `pkg-config fuse --cflags` $1.c -o $1 `pkg-config fuse --libs` -pthread
