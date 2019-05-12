@@ -7,6 +7,7 @@ int main(int argc, char *argv[])
     status_menu = MENU_UTAMA;
     int handler = system("clear");
     inisialisasi_music_player();
+
     pthread_mutex_init(&lock, NULL);
     pthread_create(&tid_keyboard, NULL, &baca_perintah_keyboard, NULL);
     pthread_create(&tid_menu, NULL, &menu_music_player, NULL);
@@ -19,23 +20,27 @@ int main(int argc, char *argv[])
     return 0;
 }
 
+//=====================
+//---- Menu utama -----
+//=====================
 void menu_utama()
 {
-    printf("1. Mainkan lagu\n");
-    printf("2. Daftar lagu saja semuanya\n");
-    printf("3. Playlist\n");
-    printf("4. Exit\n");
+    printf("1. Mainkan lagu (semua lagu)\n");
+    printf("2. Playlist\n");
+    printf("3. Exit\n");
     printf("================================================\n");
 }
 
 void menu_lagu()
 {
-    list_lagu();
-    printf("==================DAFTAR-LAGU===================\n");
-    print_lagu();
+    printf("====================PLAYLIST====================\n");
+    printf("MILIK = \t%s", nama_playlist[playlist_idx]);
     printf("================================================\n");
-    printf("Tekan apapun untuk kembali\n");
+    
     printf("================================================\n");
+    printf("1. Tambahkan lagu.\n");
+    printf("2. Hapus lagu\n");
+    printf("4. Kembali ke menu utama\n");
 }
 
 void menu_play()
@@ -47,7 +52,7 @@ void menu_play()
     printf("==================DAFTAR-LAGU===================\n");
     print_lagu();
     printf("================================================\n");
-        if(current_idx == -1) 
+        if(current_idx == -1)
         printf("Silahkan memilih lagu dengan menekan sesuai abjad.\n");
     else
         printf("Current song: %s %s\n", daftar_lagu[current_idx], text);
@@ -66,27 +71,69 @@ void menu_play()
         status_lagu = PLAY;
     if( !now_playing && status_lagu == PLAY) 
     {
-        pthread_mutex_lock(&lock);
         pthread_cancel(tid_musik);
         pthread_create(&tid_musik, NULL, &mainkan_musik, (void *)daftar_lagu[current_idx]);
         now_playing = 1;
-        pthread_mutex_unlock(&lock);
     }
 }
 
 void menu_playlist()
 {
-    printf("Playlist :\n");
-    
+    static char *handler;
+    if(max_playlist_idx == 0) printf("Silahkan menambahkan playlist terlebih dahulu.\n");
+    else {
+        printf("=================DAFTAR PLAYLIST================\n");
+        print_playlist();
+    }
     printf("================================================\n");
-    printf("1. Tambah playlist\n");
-    printf("Tekan backspace untuk kembali.\n");
+    if(playlist_idx == -1 && max_playlist_idx > 0) 
+        printf("Silahkan memilih playlist dengan menekan sesuai abjad.\n");
+    else if(playlist_idx >= 0)
+    {
+        printf("Current playlist : %s", nama_playlist[playlist_idx]);
+        printf("================================================\n");
+    }
+    printf("1. Open playlist");
+    if(max_playlist_idx <= 0)
+        printf("(tambahkan playlist terlebih dahulu)");
+    else if(playlist_idx < 0) 
+        printf("(pilih playlist terlebih dahulu)");
+    printf("\n");
+    printf("2. Tambah playlist\n");
+    printf("3. Hapus playlist ");
+    if(max_playlist_idx <= 0)
+        printf("(tambahkan playlist terlebih dahulu)");
+    else if(playlist_idx < 0) 
+        printf("(pilih playlist terlebih dahulu)");
+    printf("\n");
+    printf("4. Kembali ke menu utama\n");
+    if(status_playlist == ADD)
+    {
+        pthread_mutex_lock(&lock);
+        char nama[64];
+        if(mutex == 1)
+        {
+            printf("Masukkan nama playlist: ");
+            handler = fgets(nama, sizeof(nama), stdin);
+            sprintf(nama_playlist[max_playlist_idx++], "%s", nama);
+            status_playlist = DONE;
+            pthread_mutex_unlock(&lock);
+            pthread_cond_signal(&condition);
+            mutex = 0;
+        } else {
+            pthread_mutex_unlock(&lock);
+        }
+    }
+    else if(status_playlist == REMOVE)
+    {
+        remove_playlist(playlist_idx);
+        status_playlist = DONE;
+    }
 }
 
 void print_lagu()
 {
-    static int abjad;
-    abjad = 'A';
+    char abjad = 'A';
     for(int i = 0;i < PAGE; i++)
     {
         if( i + (current_page*PAGE) <=  max_idx)
@@ -96,7 +143,20 @@ void print_lagu()
 
 void print_playlist()
 {
-    
+    char abjad = 'A';
+    for(int i = 0;i < max_playlist_idx; i++)
+    {
+        printf("%c. %s", abjad++, nama_playlist[i]);
+    }
+        
+}
+
+void remove_playlist(int idx)
+{
+    for(int i = idx;i < max_playlist_idx; i++)
+        strcpy(nama_playlist[i], nama_playlist[i + 1]);
+    max_playlist_idx--;
+    playlist_idx = -1;
 }
 
 void *baca_perintah_keyboard(void *args)
@@ -104,21 +164,21 @@ void *baca_perintah_keyboard(void *args)
     command = 0;
     while (command != 32)
     {
+        pthread_mutex_lock(&lock);
+        while(mutex == 1) pthread_cond_wait(&condition, &lock);
+        pthread_mutex_unlock(&lock);
         command = getch();
         if(status_menu == MENU_UTAMA)
         {
             switch (command)
             {
-            case '1':
+            case '1': 
                 status_menu = MENU_PLAY;
                 break;
             case '2':
-                status_menu = MENU_LIST_LAGU;
-                break;
-            case '3':
                 status_menu = MENU_PLAYLIST;
                 break;
-            case '4':
+            case '3':
                 command = 32;
                 break;
             default:
@@ -129,8 +189,23 @@ void *baca_perintah_keyboard(void *args)
         {
             switch (command)
             {
-            default:
+            case '1': //Open playlist
+                if(playlist_idx >= 0)
+                    status_menu = MENU_LIST_LAGU;
+                break;
+            case '2': //Tambah playlist
+                status_playlist = ADD;
+                mutex = 1;
+                break;
+            case '3': //Hapus playlist
+                if(playlist_idx >= 0)
+                    status_playlist = REMOVE;
+                break;
+            case '4': //kembali ke menu utama
                 status_menu = MENU_UTAMA;
+            default:
+                if('A' <= command && command < 'A' + max_playlist_idx)
+                    playlist_idx = command - 'A';
                 break;
             }
         }
@@ -138,7 +213,7 @@ void *baca_perintah_keyboard(void *args)
         {
             switch (command)
             {
-            case 8:
+            case '4':
                 status_menu = MENU_UTAMA;
                 break;
             default:
@@ -200,7 +275,8 @@ void *baca_perintah_keyboard(void *args)
                     abjad_maks = max_idx % PAGE;
                 else abjad_maks = PAGE;
 
-                if('A' <= command && command <= ('A' + abjad_maks ) && status_lagu != PLAY)
+                if('A' <= command && command <= ('A' + abjad_maks ) 
+                    && status_lagu != PLAY)
                     current_idx = (current_page*PAGE) + (command - 'A');
                 break;
             }
@@ -221,6 +297,7 @@ void *menu_music_player(void *args)
         {
         case MENU_UTAMA:
             current_idx = -1;
+            playlist_idx = -1;
             menu_utama();
             break;
         case MENU_PLAY:
@@ -321,6 +398,9 @@ void list_lagu()
     closedir(directory);
 }
 
+//=====================
+//--Inisialisasi mp3---
+//=====================
 void inisialisasi_music_player()
 {
     static int err;
@@ -332,6 +412,9 @@ void inisialisasi_music_player()
     buffer = (unsigned char*) malloc(buffer_size * sizeof(unsigned char));
 }
 
+//=====================
+//------Close mp3------
+//=====================
 void close_music_player()
 {
     free(buffer);

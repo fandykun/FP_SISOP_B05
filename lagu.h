@@ -27,6 +27,7 @@
 #define PAGE 6
 #define ADD 1
 #define REMOVE 2
+#define DONE 3
 
 #define KNRM  "\x1B[0m"
 #define KRED  "\x1B[31m"
@@ -55,7 +56,9 @@ long rate;
 pthread_t tid_musik;
 pthread_t tid_menu;
 pthread_t tid_keyboard;
-pthread_mutex_t lock;
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t condition = PTHREAD_COND_INITIALIZER;
+int mutex = 0;
 
 int status_menu;
 int status_lagu;
@@ -71,7 +74,9 @@ char daftar_lagu[MAXLIST][MAXLEN];
 
 char nama_playlist[MAXLIST][MAXLEN];
 int isi_playlist[MAXLIST][MAXLIST];
-
+int max_playlist_idx = 0;
+int playlist_idx = -1;
+int lagu_playlist_idx = 0;
 //---------Deklarasi fungsi-------------
 void inisialisasi_music_player();
 void close_music_player();
@@ -84,6 +89,7 @@ void menu_utama();
 
 void menu_playlist();
 void print_playlist();
+void remove_playlist(int idx);
 
 void *baca_perintah_keyboard(void *args);
 void *menu_music_player(void *args);
